@@ -1,0 +1,145 @@
+# Introduction: The Payment Problem
+
+## 🎯 The Problem We're Solving
+
+In Uganda, like many developing countries, people frequently need to split expenses:
+
+### Real Ugandan Scenarios
+
+**🏠 Roommate Rent Splitting**
+```
+John, Sarah, and David share a 3-bedroom apartment
+Rent: 800,000 UGX/month
+Utilities: 150,000 UGX/month
+Total: 950,000 UGX/month
+
+Problem: Who collects the money? Who tracks who paid?
+```
+
+**🍽️ Restaurant Bills**
+```
+5 friends at Cafe Javas
+Total bill: 75,000 UGX
+Some ordered expensive drinks, others just coffee
+Problem: How to split fairly?
+```
+
+**🏍️ Boda Boda Sharing**
+```
+4 friends going to the same event
+Boda ride: 8,000 UGX each
+Problem: Who pays the driver? How to collect from others?
+```
+
+### Traditional Problems
+
+| Problem | Impact |
+|---------|--------|
+| **Cash Handling** | Risk of loss, theft, or miscounting |
+| **Trust Issues** | "Did John really pay his share?" |
+| **Manual Calculations** | Math errors, especially with percentages |
+| **No Records** | No proof of payments made |
+| **Geographic Limitations** | Hard to collect from people in different locations |
+
+## 💡 The Blockchain Solution
+
+Our **Payment Splitter DApp** solves these problems using blockchain technology:
+
+### How It Works
+
+1. **Create Payment Split** - Define who gets what percentage
+2. **Contributors Pay** - Each person sends their share directly
+3. **Automatic Distribution** - When target is reached, funds are distributed
+4. **Transparent Records** - All transactions are visible on blockchain
+
+### Example: Restaurant Bill
+
+```solidity
+// Create payment split for 5 people
+createPayment(
+    "Cafe Javas Dinner",
+    75000, // 75,000 UGX in wei
+    [
+        "0x1234...", // John - 25%
+        "0x5678...", // Sarah - 20%
+        "0x9abc...", // David - 25%
+        "0xdef0...", // Mary - 15%
+        "0x1111..."  // Peter - 15%
+    ],
+    [25, 20, 25, 15, 15] // Percentages
+)
+```
+
+### Benefits for Ugandan Context
+
+| Benefit | Why It Matters |
+|---------|---------------|
+| **No Cash Handling** | Eliminates theft and miscounting |
+| **Automatic Math** | No calculation errors |
+| **Permanent Records** | Blockchain proof of all payments |
+| **Cross-Border** | Works for Ugandans abroad |
+| **Mobile-Friendly** | Works on smartphones |
+| **Low Fees** | Celo network has minimal transaction costs |
+
+## 🏗️ Architecture Overview
+
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Web Interface │    │   Smart Contract│    │  Celo Blockchain│
+│   (Flask App)   │◄──►│   (Solidity)    │◄──►│   (Alfajores)   │
+│                 │    │                 │    │                 │
+│ • Create Payment│    │ • createPayment │    │ • Transaction   │
+│ • Pay Invoice   │    │ • payInvoice    │    │   History       │
+│ • View Details  │    │ • distribute    │    │ • Block Explorer│
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+```
+
+## 🎓 Learning Objectives
+
+By the end of this tutorial, you'll understand:
+
+### Technical Skills
+- **Smart Contract Development** - Writing Solidity code
+- **Blockchain Deployment** - Deploying to Celo testnet
+- **Web3 Integration** - Connecting web apps to blockchain
+- **Modern Web Development** - Flask, Bootstrap, JavaScript
+
+### Business Understanding
+- **Real-World Applications** - Practical use cases
+- **Blockchain Benefits** - Why this beats traditional methods
+- **User Experience** - Making blockchain accessible
+- **Cost Analysis** - Understanding transaction fees
+
+### Development Process
+- **Environment Setup** - Tools and configurations
+- **Testing Strategy** - Unit tests and integration tests
+- **Deployment Pipeline** - From development to production
+- **Verification Process** - Making contracts public
+
+## 🚀 Why This Project?
+
+### Perfect for Ugandan Developers
+
+1. **Practical Application** - Solves real problems
+2. **Modern Stack** - Uses current technologies
+3. **Scalable** - Can be extended for other use cases
+4. **Educational** - Teaches blockchain fundamentals
+5. **Portfolio-Ready** - Can be shown to employers
+
+### Market Opportunity
+
+- **Growing Web3 Ecosystem** in Africa
+- **Increasing Mobile Money** adoption
+- **Cross-Border Payments** demand
+- **Financial Inclusion** initiatives
+
+## 📋 What's Next?
+
+In the next chapter, we'll set up our development environment and install all the necessary tools. You'll learn about:
+
+- **Python Environment** setup
+- **Brownie Framework** installation
+- **Celo Network** configuration
+- **Development Tools** and best practices
+
+Ready to get started? Let's move to the [Setup](setup.qmd) chapter!

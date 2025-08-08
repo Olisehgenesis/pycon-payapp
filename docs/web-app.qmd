@@ -1,0 +1,923 @@
+# Web Application: Building the User Interface
+
+## 🎯 Why Build a Web App?
+
+While you can interact with your smart contract directly through Brownie, a web application makes it accessible to non-technical users. Our Flask app provides:
+
+- **User-Friendly Interface** - No command line needed
+- **Real-Time Updates** - See payments as they happen
+- **Mobile Responsive** - Works on smartphones
+- **Modern Design** - Professional look and feel
+
+## 🏗️ Architecture Overview
+
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Web Browser   │    │   Flask Server  │    │  Celo Blockchain│
+│                 │◄──►│                 │◄──►│                 │
+│ • HTML/CSS/JS   │    │ • Python/Flask  │    │ • Smart Contract│
+│ • Bootstrap     │    │ • Web3.py       │    │ • Payment Data  │
+│ • User Input    │    │ • API Endpoints │    │ • Transactions  │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+```
+
+## 📁 Project Structure
+
+```
+pycon-app/
+├── app.py                 # Main Flask application
+├── requirements.txt       # Python dependencies
+├── .env                  # Environment variables
+├── templates/            # HTML templates
+│   ├── base.html         # Base template
+│   ├── index.html        # Dashboard
+│   ├── create_payment.html
+│   ├── pay_invoice.html
+│   └── view_payment.html
+├── static/               # Static files
+│   ├── css/
+│   │   └── style.css     # Custom styles
+│   └── js/
+│       └── app.js        # JavaScript functions
+└── README.md            # Documentation
+```
+
+## 🚀 Setting Up the Flask App
+
+### 1. Create Project Directory
+
+```bash
+# Create Flask app directory
+mkdir pycon-app
+cd pycon-app
+```
+
+### 2. Install Dependencies
+
+```bash
+# Create virtual environment
+python3 -m venv venv
+source venv/bin/activate
+
+# Install Flask and Web3
+pip install Flask web3 python-dotenv Werkzeug
+```
+
+### 3. Create Environment File
+
+Create `.env` file:
+
+```bash
+# Contract configuration
+CONTRACT_ADDRESS=0xyour_deployed_contract_address
+CELO_RPC_URL=https://alfajores-forno.celo-testnet.org
+EXPLORER_URL=https://alfajores.celoscan.io
+
+# Flask configuration
+SECRET_KEY=your_secret_key_here
+FLASK_ENV=development
+```
+
+## 🔧 Flask Application Setup
+
+### Main App File (`app.py`)
+
+```python
+from flask import Flask, render_template, request, jsonify, redirect, url_for, flash
+import os
+from dotenv import load_dotenv
+from web3 import Web3
+import json
+
+# Load environment variables
+load_dotenv()
+app = Flask(__name__)
+app.secret_key = os.getenv('SECRET_KEY', 'your-secret-key-here')
+
+# Contract configuration
+CONTRACT_ADDRESS = os.getenv('CONTRACT_ADDRESS', '0x0175dDbE48ea455bbFE21E6E36a4f59781f90BE9')
+CELO_RPC_URL = "https://alfajores-forno.celo-testnet.org"
+EXPLORER_URL = "https://alfajores.celoscan.io"
+
+# Web3 setup
+w3 = Web3(Web3.HTTPProvider(CELO_RPC_URL))
+
+# Simplified contract ABI for web interface
+CONTRACT_ABI = [
+    {
+        "inputs": [
+            {"name": "_description", "type": "string"},
+            {"name": "_totalAmount", "type": "uint256"},
+            {"name": "_recipients", "type": "address[]"},
+            {"name": "_percentages", "type": "uint256[]"}
+        ],
+        "name": "createPayment",
+        "outputs": [{"name": "", "type": "uint256"}],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [{"name": "_paymentId", "type": "uint256"}],
+        "name": "payInvoice",
+        "outputs": [],
+        "stateMutability": "payable",
+        "type": "function"
+    },
+    {
+        "inputs": [{"name": "_paymentId", "type": "uint256"}],
+        "name": "getPayment",
+        "outputs": [
+            {"name": "description", "type": "string"},
+            {"name": "totalAmount", "type": "uint256"},
+            {"name": "collectedAmount", "type": "uint256"},
+            {"name": "creator", "type": "address"},
+            {"name": "recipients", "type": "address[]"},
+            {"name": "percentages", "type": "uint256[]"},
+            {"name": "distributed", "type": "bool"}
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "nextPaymentId",
+        "outputs": [{"name": "", "type": "uint256"}],
+        "stateMutability": "view",
+        "type": "function"
+    }
+]
+
+# Contract instance
+contract = w3.eth.contract(address=CONTRACT_ADDRESS, abi=CONTRACT_ABI)
+
+@app.route('/')
+def index():
+    """Dashboard page"""
+    try:
+        # Get total payments
+        total_payments = contract.functions.nextPaymentId().call()
+        
+        # Get recent payments (last 5)
+        payments = []
+        for i in range(max(0, total_payments - 5), total_payments):
+            try:
+                payment_data = contract.functions.getPayment(i).call()
+                payments.append({
+                    'id': i,
+                    'description': payment_data[0],
+                    'total_amount': w3.from_wei(payment_data[1], 'ether'),
+                    'collected_amount': w3.from_wei(payment_data[2], 'ether'),
+                    'creator': payment_data[3],
+                    'recipients': payment_data[4],
+                    'percentages': payment_data[5],
+                    'distributed': payment_data[6]
+                })
+            except Exception as e:
+                continue
+        
+        # Calculate statistics
+        active_payments = sum(1 for p in payments if not p['distributed'])
+        total_celo = sum(float(p['total_amount']) for p in payments)
+        
+        return render_template('index.html', 
+                             payments=payments,
+                             total_payments=total_payments,
+                             active_payments=active_payments,
+                             total_celo=total_celo)
+    except Exception as e:
+        flash(f"Error loading dashboard: {str(e)}", "error")
+        return render_template('index.html', payments=[], total_payments=0, active_payments=0, total_celo=0)
+
+@app.route('/create_payment', methods=['GET', 'POST'])
+def create_payment():
+    """Create new payment split"""
+    if request.method == 'POST':
+        try:
+            description = request.form['description']
+            total_amount = float(request.form['total_amount'])
+            recipients = request.form.getlist('recipients[]')
+            percentages = [int(p) for p in request.form.getlist('percentages[]')]
+            
+            # Validate input
+            if not description or total_amount <= 0:
+                flash("Please provide valid description and amount", "error")
+                return redirect(url_for('create_payment'))
+            
+            if len(recipients) != len(percentages):
+                flash("Number of recipients must match number of percentages", "error")
+                return redirect(url_for('create_payment'))
+            
+            if sum(percentages) != 100:
+                flash("Percentages must add up to 100", "error")
+                return redirect(url_for('create_payment'))
+            
+            # Convert to wei
+            amount_wei = w3.to_wei(total_amount, 'ether')
+            
+            # Create payment (this would require user wallet integration)
+            flash("Payment creation requires wallet integration. Use Brownie scripts for now.", "info")
+            return redirect(url_for('index'))
+            
+        except Exception as e:
+            flash(f"Error creating payment: {str(e)}", "error")
+            return redirect(url_for('create_payment'))
+    
+    return render_template('create_payment.html')
+
+@app.route('/pay_invoice', methods=['GET', 'POST'])
+def pay_invoice():
+    """Pay invoice page"""
+    if request.method == 'POST':
+        try:
+            payment_id = int(request.form['payment_id'])
+            amount = float(request.form['amount'])
+            
+            # Validate input
+            if payment_id < 0 or amount <= 0:
+                flash("Please provide valid payment ID and amount", "error")
+                return redirect(url_for('pay_invoice'))
+            
+            # Convert to wei
+            amount_wei = w3.to_wei(amount, 'ether')
+            
+            # Pay invoice (this would require user wallet integration)
+            flash("Payment requires wallet integration. Use Brownie scripts for now.", "info")
+            return redirect(url_for('index'))
+            
+        except Exception as e:
+            flash(f"Error paying invoice: {str(e)}", "error")
+            return redirect(url_for('pay_invoice'))
+    
+    # Get recent payments for selection
+    try:
+        total_payments = contract.functions.nextPaymentId().call()
+        payments = []
+        for i in range(max(0, total_payments - 10), total_payments):
+            try:
+                payment_data = contract.functions.getPayment(i).call()
+                if not payment_data[6]:  # Not distributed
+                    payments.append({
+                        'id': i,
+                        'description': payment_data[0],
+                        'total_amount': w3.from_wei(payment_data[1], 'ether'),
+                        'collected_amount': w3.from_wei(payment_data[2], 'ether')
+                    })
+            except Exception as e:
+                continue
+    except Exception as e:
+        payments = []
+    
+    return render_template('pay_invoice.html', payments=payments)
+
+@app.route('/view_payment/<int:payment_id>')
+def view_payment(payment_id):
+    """View payment details"""
+    try:
+        payment_data = contract.functions.getPayment(payment_id).call()
+        
+        payment = {
+            'id': payment_id,
+            'description': payment_data[0],
+            'total_amount': w3.from_wei(payment_data[1], 'ether'),
+            'collected_amount': w3.from_wei(payment_data[2], 'ether'),
+            'creator': payment_data[3],
+            'recipients': payment_data[4],
+            'percentages': payment_data[5],
+            'distributed': payment_data[6]
+        }
+        
+        # Calculate progress
+        progress = (float(payment['collected_amount']) / float(payment['total_amount'])) * 100
+        
+        return render_template('view_payment.html', payment=payment, progress=progress)
+        
+    except Exception as e:
+        flash(f"Error loading payment: {str(e)}", "error")
+        return redirect(url_for('index'))
+
+@app.route('/api/payments')
+def api_payments():
+    """API endpoint for payments data"""
+    try:
+        total_payments = contract.functions.nextPaymentId().call()
+        payments = []
+        
+        for i in range(total_payments):
+            try:
+                payment_data = contract.functions.getPayment(i).call()
+                payments.append({
+                    'id': i,
+                    'description': payment_data[0],
+                    'total_amount': float(w3.from_wei(payment_data[1], 'ether')),
+                    'collected_amount': float(w3.from_wei(payment_data[2], 'ether')),
+                    'creator': payment_data[3],
+                    'recipients': payment_data[4],
+                    'percentages': payment_data[5],
+                    'distributed': payment_data[6]
+                })
+            except Exception as e:
+                continue
+        
+        return jsonify(payments)
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+if __name__ == '__main__':
+    app.run(debug=True, host='0.0.0.0', port=5000)
+```
+
+## 🎨 Frontend Design
+
+### Base Template (`templates/base.html`)
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Payment Splitter DApp{% endblock %}</title>
+    
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('index') }}">
+                <i class="fas fa-share-alt me-2"></i>
+                Payment Splitter
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('index') }}">
+                            <i class="fas fa-home me-1"></i>Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('create_payment') }}">
+                            <i class="fas fa-plus me-1"></i>Create Payment
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('pay_invoice') }}">
+                            <i class="fas fa-credit-card me-1"></i>Pay Invoice
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="container mt-3">
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <!-- Main Content -->
+    <main class="container my-4">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-light py-4 mt-5">
+        <div class="container text-center">
+            <p class="mb-0 text-muted">
+                Built with ❤️ for the Ugandan Web3 community! 🇺🇬
+            </p>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Custom JS -->
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
+```
+
+### Dashboard (`templates/index.html`)
+
+```html
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Payment Splitter{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Statistics Cards -->
+    <div class="col-md-4 mb-4">
+        <div class="card stat-card">
+            <div class="card-body text-center">
+                <i class="fas fa-receipt stat-icon text-primary"></i>
+                <h3 class="stat-number">{{ total_payments }}</h3>
+                <p class="stat-label">Total Payments</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4 mb-4">
+        <div class="card stat-card">
+            <div class="card-body text-center">
+                <i class="fas fa-clock stat-icon text-warning"></i>
+                <h3 class="stat-number">{{ active_payments }}</h3>
+                <p class="stat-label">Active Payments</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4 mb-4">
+        <div class="card stat-card">
+            <div class="card-body text-center">
+                <i class="fas fa-coins stat-icon text-success"></i>
+                <h3 class="stat-number">{{ "%.2f"|format(total_celo) }}</h3>
+                <p class="stat-label">Total CELO Managed</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Payments -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-list me-2"></i>Recent Payments
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if payments %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Description</th>
+                                    <th>Total Amount</th>
+                                    <th>Collected</th>
+                                    <th>Progress</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for payment in payments %}
+                                <tr>
+                                    <td>#{{ payment.id }}</td>
+                                    <td>{{ payment.description }}</td>
+                                    <td>{{ "%.4f"|format(payment.total_amount) }} CELO</td>
+                                    <td>{{ "%.4f"|format(payment.collected_amount) }} CELO</td>
+                                    <td>
+                                        {% set progress = (payment.collected_amount / payment.total_amount * 100) %}
+                                        <div class="progress" style="height: 20px;">
+                                            <div class="progress-bar" role="progressbar" 
+                                                 style="width: {{ progress }}%"
+                                                 aria-valuenow="{{ progress }}" 
+                                                 aria-valuemin="0" aria-valuemax="100">
+                                                {{ "%.1f"|format(progress) }}%
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        {% if payment.distributed %}
+                                            <span class="badge bg-success">Distributed</span>
+                                        {% else %}
+                                            <span class="badge bg-warning">Active</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('view_payment', payment_id=payment.id) }}" 
+                                           class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-eye me-1"></i>View
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No payments yet</h5>
+                        <p class="text-muted">Create your first payment split to get started!</p>
+                        <a href="{{ url_for('create_payment') }}" class="btn btn-primary">
+                            <i class="fas fa-plus me-2"></i>Create Payment
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Features Section -->
+<div class="row mt-5">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-star me-2"></i>Why Use Payment Splitter?
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 text-center mb-3">
+                        <i class="fas fa-shield-alt fa-2x text-primary mb-2"></i>
+                        <h6>Secure</h6>
+                        <small class="text-muted">Blockchain-backed security</small>
+                    </div>
+                    <div class="col-md-3 text-center mb-3">
+                        <i class="fas fa-calculator fa-2x text-success mb-2"></i>
+                        <h6>Automatic</h6>
+                        <small class="text-muted">No manual calculations</small>
+                    </div>
+                    <div class="col-md-3 text-center mb-3">
+                        <i class="fas fa-globe fa-2x text-info mb-2"></i>
+                        <h6>Global</h6>
+                        <small class="text-muted">Works anywhere in the world</small>
+                    </div>
+                    <div class="col-md-3 text-center mb-3">
+                        <i class="fas fa-history fa-2x text-warning mb-2"></i>
+                        <h6>Transparent</h6>
+                        <small class="text-muted">Permanent records</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Auto-refresh payments data
+setInterval(function() {
+    fetch('/api/payments')
+        .then(response => response.json())
+        .then(data => {
+            // Update dashboard with new data
+            console.log('Payments updated:', data);
+        })
+        .catch(error => {
+            console.error('Error fetching payments:', error);
+        });
+}, 30000); // Refresh every 30 seconds
+</script>
+{% endblock %}
+```
+
+## 🎨 Custom Styling
+
+### CSS (`static/css/style.css`)
+
+```css
+/* Custom styles for Payment Splitter DApp */
+
+:root {
+    --primary-color: #007bff;
+    --success-color: #28a745;
+    --warning-color: #ffc107;
+    --danger-color: #dc3545;
+    --info-color: #17a2b8;
+    --light-color: #f8f9fa;
+    --dark-color: #343a40;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+}
+
+/* Navigation */
+.navbar-brand {
+    font-weight: 600;
+    font-size: 1.25rem;
+}
+
+.navbar-nav .nav-link {
+    font-weight: 500;
+    transition: color 0.3s ease;
+}
+
+.navbar-nav .nav-link:hover {
+    color: rgba(255, 255, 255, 0.8) !important;
+}
+
+/* Cards */
+.card {
+    border: none;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+}
+
+.card-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 15px 15px 0 0 !important;
+    border: none;
+}
+
+.card-title {
+    font-weight: 600;
+    margin: 0;
+}
+
+/* Statistics Cards */
+.stat-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    text-align: center;
+    padding: 2rem;
+}
+
+.stat-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.8;
+}
+
+.stat-number {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.stat-label {
+    font-size: 0.9rem;
+    opacity: 0.9;
+    margin: 0;
+}
+
+/* Progress Bars */
+.progress {
+    border-radius: 10px;
+    background-color: rgba(0, 0, 0, 0.1);
+}
+
+.progress-bar {
+    border-radius: 10px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+/* Buttons */
+.btn {
+    border-radius: 10px;
+    font-weight: 500;
+    padding: 0.5rem 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+
+.btn-outline-primary {
+    border-color: #667eea;
+    color: #667eea;
+}
+
+.btn-outline-primary:hover {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-color: transparent;
+}
+
+/* Forms */
+.form-control {
+    border-radius: 10px;
+    border: 2px solid #e9ecef;
+    padding: 0.75rem 1rem;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.form-control:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+}
+
+.form-label {
+    font-weight: 600;
+    color: #495057;
+}
+
+/* Tables */
+.table {
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.table thead th {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    font-weight: 600;
+    padding: 1rem;
+}
+
+.table tbody td {
+    padding: 1rem;
+    vertical-align: middle;
+    border-color: #e9ecef;
+}
+
+.table tbody tr:hover {
+    background-color: rgba(102, 126, 234, 0.05);
+}
+
+/* Badges */
+.badge {
+    border-radius: 20px;
+    padding: 0.5rem 1rem;
+    font-weight: 500;
+}
+
+/* Alerts */
+.alert {
+    border-radius: 10px;
+    border: none;
+    padding: 1rem 1.5rem;
+}
+
+/* Footer */
+footer {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    margin-top: auto;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .stat-card {
+        padding: 1.5rem;
+    }
+    
+    .stat-number {
+        font-size: 2rem;
+    }
+    
+    .stat-icon {
+        font-size: 2.5rem;
+    }
+    
+    .card-body {
+        padding: 1rem;
+    }
+    
+    .table-responsive {
+        font-size: 0.9rem;
+    }
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.card {
+    animation: fadeIn 0.6s ease-out;
+}
+
+/* Loading States */
+.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.spinner-border {
+    width: 1rem;
+    height: 1rem;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+}
+```
+
+## 🚀 Running the Application
+
+### 1. Start the Flask Server
+
+```bash
+# Navigate to Flask app directory
+cd pycon-app
+
+# Activate virtual environment
+source venv/bin/activate
+
+# Run the application
+python app.py
+```
+
+### 2. Access the Application
+
+Open your browser and go to:
+```
+http://localhost:5000
+```
+
+You should see the dashboard with:
+- Statistics cards
+- Recent payments table
+- Navigation menu
+- Modern design
+
+## 🔧 Features Implemented
+
+### ✅ Completed Features
+
+- **Dashboard** - Overview of all payments
+- **Payment Creation** - Form to create new splits
+- **Invoice Payment** - Form to pay invoices
+- **Payment Details** - View specific payment information
+- **Real-time Updates** - Auto-refresh data
+- **Responsive Design** - Works on mobile
+- **Modern UI** - Professional appearance
+
+### 🔄 Future Enhancements
+
+- **Wallet Integration** - Connect MetaMask or other wallets
+- **Real Transactions** - Actually send CELO from web interface
+- **User Authentication** - Login/logout system
+- **Payment Notifications** - Email/SMS alerts
+- **Mobile App** - React Native version
+- **Advanced Analytics** - Charts and graphs
+
+## 🎯 Next Steps
+
+Now that your web application is running, you can:
+
+1. **Test the Interface** - Navigate through all pages
+2. **Integrate Wallet** - Add MetaMask connection
+3. **Deploy to Production** - Host on cloud platform
+4. **Add More Features** - Extend functionality
+
+Ready to verify your contract? Let's move to the [Contract Verification](verification.qmd) chapter!

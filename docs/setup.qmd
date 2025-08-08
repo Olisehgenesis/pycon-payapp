@@ -1,0 +1,267 @@
+# Setup: Development Environment
+
+## 🛠️ Prerequisites
+
+Before we start building, you'll need:
+
+### System Requirements
+- **Operating System**: Linux, macOS, or Windows (WSL recommended)
+- **Python**: Version 3.10 (Brownie compatibility)
+- **Git**: For version control
+- **Text Editor**: VS Code, Sublime Text, or your preference
+
+### Python Version Check
+
+```bash
+python3 --version
+```
+
+**Important**: Brownie works best with Python 3.10. If you have Python 3.12, you'll need to downgrade:
+
+```bash
+# Install pyenv for Python version management
+curl https://pyenv.run | bash
+
+# Add to your shell profile
+echo 'export PATH="$HOME/.pyenv/bin:$PATH"' >> ~/.bashrc
+echo 'eval "$(pyenv init -)"' >> ~/.bashrc
+source ~/.bashrc
+
+# Install Python 3.10
+pyenv install 3.10.12
+pyenv local 3.10.12
+```
+
+## 🚀 Quick Setup (Automated)
+
+We've created an automated setup script for you:
+
+```bash
+# Clone the project
+git clone <your-repo-url>
+cd pycon-app-contracts
+
+# Make setup script executable
+chmod +x setup.sh
+
+# Run the setup
+./setup.sh
+```
+
+This script will:
+1. Create a virtual environment
+2. Install all dependencies
+3. Initialize Brownie
+4. Add Celo network configuration
+5. Create necessary directories
+
+## 📋 Manual Setup (Step-by-Step)
+
+If you prefer to understand each step, here's the manual process:
+
+### 1. Create Project Directory
+
+```bash
+mkdir pycon-app-contracts
+cd pycon-app-contracts
+```
+
+### 2. Set Up Python Environment
+
+```bash
+# Create virtual environment
+python3 -m venv .venv
+
+# Activate virtual environment
+source .venv/bin/activate  # Linux/macOS
+# or
+.venv\Scripts\activate     # Windows
+```
+
+### 3. Install Dependencies
+
+```bash
+# Install Brownie and other dependencies
+pip install eth-brownie python-dotenv pytest eth-account
+
+# Verify installation
+brownie --version
+```
+
+### 4. Initialize Brownie Project
+
+```bash
+# Initialize Brownie project
+brownie init
+
+# This creates the basic project structure:
+# ├── contracts/
+# ├── scripts/
+# ├── tests/
+# ├── brownie-config.yaml
+# └── README.md
+```
+
+### 5. Configure Celo Network
+
+```bash
+# Add Celo Alfajores testnet
+brownie networks add Celo alfajores host=https://alfajores-forno.celo-testnet.org chainid=44787 explorer=https://alfajores.celoscan.io
+
+# Verify network is added
+brownie networks list
+```
+
+### 6. Create Configuration Files
+
+Create `brownie-config.yaml`:
+
+```yaml
+compiler:
+  solc:
+    version: 0.8.19
+    settings:
+      optimizer:
+        enabled: true
+        runs: 200
+
+dependencies:
+  - OpenZeppelin/openzeppelin-contracts@4.9.0
+
+networks:
+  alfajores:
+    host: https://alfajores-forno.celo-testnet.org
+    chainid: 44787
+    explorer: https://alfajores.celoscan.io
+    verify_source_code: true
+    api_key: ${CELOSCAN_TOKEN}
+
+dotenv: .env
+```
+
+### 7. Create Environment File
+
+Create `.env` file:
+
+```bash
+# Create .env file
+touch .env
+
+# Add your private key (we'll generate this next)
+echo "PRIVATE_KEY=your_private_key_here" >> .env
+echo "CELOSCAN_TOKEN=your_api_token_here" >> .env
+```
+
+## 🔐 Account Creation
+
+### Generate New Account
+
+We've created a script to generate a new account:
+
+```bash
+# Run account creation script
+python scripts/create_account.py
+```
+
+This will:
+1. Generate a new Ethereum account
+2. Display the address
+3. Save the private key to `.env`
+4. Provide instructions for getting test CELO
+
+### Get Test CELO
+
+1. Visit [Celo Faucet](https://faucet.celo.org/)
+2. Enter your generated address
+3. Select "Alfajores" network
+4. Request test CELO
+
+## 📁 Project Structure
+
+After setup, your project will look like this:
+
+```
+pycon-app-contracts/
+├── contracts/
+│   └── PaymentSplitter.sol
+├── scripts/
+│   ├── create_account.py
+│   ├── deploy.py
+│   ├── create_payment.py
+│   ├── pay_invoice.py
+│   └── verify_contract.py
+├── tests/
+│   └── test_payment_splitter.py
+├── docs/
+│   ├── _quarto.yml
+│   ├── index.qmd
+│   ├── intro.qmd
+│   └── setup.qmd
+├── brownie-config.yaml
+├── requirements.txt
+├── setup.sh
+├── .env
+└── README.md
+```
+
+## 🧪 Verify Setup
+
+Test that everything is working:
+
+```bash
+# Check Brownie installation
+brownie --version
+
+# Check network configuration
+brownie networks list
+
+# Run tests
+brownie test
+
+# Check account balance (after getting test CELO)
+brownie run scripts/deploy --network alfajores
+```
+
+## 🔧 Troubleshooting
+
+### Common Issues
+
+**1. Python Version Problems**
+```bash
+# If you get version errors
+python3 --version
+# Should show 3.10.x
+```
+
+**2. Brownie Not Found**
+```bash
+# Reinstall Brownie
+pip uninstall eth-brownie
+pip install eth-brownie
+```
+
+**3. Network Connection Issues**
+```bash
+# Test Celo RPC connection
+curl -X POST -H "Content-Type: application/json" \
+  --data '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' \
+  https://alfajores-forno.celo-testnet.org
+```
+
+**4. Permission Denied**
+```bash
+# Fix script permissions
+chmod +x setup.sh
+chmod +x scripts/*.py
+```
+
+## 📚 Next Steps
+
+Now that your environment is set up, you're ready to:
+
+1. **Understand the Smart Contract** - Learn Solidity basics
+2. **Deploy to Testnet** - Get your contract on Celo
+3. **Build the Web App** - Create the user interface
+4. **Test Everything** - Make sure it all works
+
+Ready to dive into the smart contract? Let's move to the [Smart Contract](smart-contract.qmd) chapter!

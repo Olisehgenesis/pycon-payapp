@@ -1,0 +1,317 @@
+# Smart Contract: PaymentSplitter
+
+## 🎯 Understanding Smart Contracts
+
+A **smart contract** is a self-executing program that runs on the blockchain. Think of it as a digital agreement that automatically enforces rules when certain conditions are met.
+
+### Why Smart Contracts?
+
+| Traditional Method | Smart Contract Solution |
+|-------------------|------------------------|
+| Trust a person to collect money | Code automatically handles payments |
+| Manual calculations | Automatic math |
+| No permanent records | Immutable blockchain records |
+| Geographic limitations | Works globally |
+
+## 📋 PaymentSplitter Contract Overview
+
+Our smart contract has these core functions:
+
+1. **`createPayment()`** - Set up a new payment split
+2. **`payInvoice()`** - Contribute to a payment
+3. **`distribute()`** - Distribute funds when target is reached
+4. **`getPayment()`** - View payment details
+5. **`getContribution()`** - Check who paid what
+
+## 🔧 Contract Structure
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.19;
+
+contract PaymentSplitter {
+    // Data structures
+    struct Payment {
+        string description;
+        uint256 totalAmount;
+        uint256 collectedAmount;
+        address creator;
+        address[] recipients;
+        uint256[] percentages;
+        bool distributed;
+        mapping(address => uint256) contributions;
+    }
+    
+    // State variables
+    mapping(uint256 => Payment) public payments;
+    uint256 public nextPaymentId;
+    
+    // Events
+    event PaymentCreated(uint256 indexed paymentId, string description, uint256 amount);
+    event ContributionMade(uint256 indexed paymentId, address contributor, uint256 amount);
+    event PaymentDistributed(uint256 indexed paymentId);
+}
+```
+
+## 🏗️ Data Structures Explained
+
+### Payment Struct
+
+```solidity
+struct Payment {
+    string description;        // "Cafe Javas Dinner"
+    uint256 totalAmount;       // 75000 (in wei)
+    uint256 collectedAmount;   // How much has been paid
+    address creator;           // Who created this payment
+    address[] recipients;      // [John, Sarah, David, Mary, Peter]
+    uint256[] percentages;     // [25, 20, 25, 15, 15]
+    bool distributed;          // Has money been distributed?
+    mapping(address => uint256) contributions; // Who paid what
+}
+```
+
+### Key Concepts
+
+- **`uint256`** - Unsigned integer (no negative numbers)
+- **`address`** - Ethereum address (20 bytes)
+- **`mapping`** - Key-value storage (like a dictionary)
+- **`wei`** - Smallest unit of CELO (1 CELO = 10^18 wei)
+
+## 🚀 Core Functions
+
+### 1. Create Payment
+
+```solidity
+function createPayment(
+    string memory _description,
+    uint256 _totalAmount,
+    address[] memory _recipients,
+    uint256[] memory _percentages
+) public returns (uint256) {
+    require(_recipients.length == _percentages.length, "Arrays must match");
+    require(_recipients.length > 0, "Must have recipients");
+    
+    uint256 totalPercentage = 0;
+    for (uint256 i = 0; i < _percentages.length; i++) {
+        totalPercentage += _percentages[i];
+    }
+    require(totalPercentage == 100, "Percentages must equal 100");
+    
+    uint256 paymentId = nextPaymentId++;
+    Payment storage payment = payments[paymentId];
+    
+    payment.description = _description;
+    payment.totalAmount = _totalAmount;
+    payment.creator = msg.sender;
+    payment.recipients = _recipients;
+    payment.percentages = _percentages;
+    
+    emit PaymentCreated(paymentId, _description, _totalAmount);
+    return paymentId;
+}
+```
+
+**What this does:**
+- Validates input (recipients and percentages arrays match)
+- Ensures percentages add up to 100%
+- Creates a new payment record
+- Emits an event for tracking
+
+### 2. Pay Invoice
+
+```solidity
+function payInvoice(uint256 _paymentId) public payable {
+    Payment storage payment = payments[_paymentId];
+    require(!payment.distributed, "Payment already distributed");
+    require(msg.value > 0, "Must send some CELO");
+    
+    payment.collectedAmount += msg.value;
+    payment.contributions[msg.sender] += msg.value;
+    
+    emit ContributionMade(_paymentId, msg.sender, msg.value);
+    
+    // Auto-distribute if target reached
+    if (payment.collectedAmount >= payment.totalAmount) {
+        distribute(_paymentId);
+    }
+}
+```
+
+**What this does:**
+- Accepts CELO payment with the transaction
+- Records who paid what amount
+- Automatically distributes when target is reached
+- Prevents double distribution
+
+### 3. Distribute Funds
+
+```solidity
+function distribute(uint256 _paymentId) public {
+    Payment storage payment = payments[_paymentId];
+    require(!payment.distributed, "Already distributed");
+    require(payment.collectedAmount >= payment.totalAmount, "Not enough funds");
+    
+    payment.distributed = true;
+    
+    for (uint256 i = 0; i < payment.recipients.length; i++) {
+        uint256 share = (payment.totalAmount * payment.percentages[i]) / 100;
+        payable(payment.recipients[i]).transfer(share);
+    }
+    
+    emit PaymentDistributed(_paymentId);
+}
+```
+
+**What this does:**
+- Calculates each recipient's share based on percentage
+- Transfers CELO to each recipient
+- Marks payment as distributed
+- Emits event for tracking
+
+## 🔍 View Functions
+
+### Get Payment Details
+
+```solidity
+function getPayment(uint256 _paymentId) public view returns (
+    string memory description,
+    uint256 totalAmount,
+    uint256 collectedAmount,
+    address creator,
+    address[] memory recipients,
+    uint256[] memory percentages,
+    bool distributed
+) {
+    Payment storage payment = payments[_paymentId];
+    return (
+        payment.description,
+        payment.totalAmount,
+        payment.collectedAmount,
+        payment.creator,
+        payment.recipients,
+        payment.percentages,
+        payment.distributed
+    );
+}
+```
+
+### Get Contribution
+
+```solidity
+function getContribution(uint256 _paymentId, address _contributor) 
+    public view returns (uint256) {
+    return payments[_paymentId].contributions[_contributor];
+}
+```
+
+## 🛡️ Security Features
+
+### Input Validation
+
+```solidity
+// Check array lengths match
+require(_recipients.length == _percentages.length, "Arrays must match");
+
+// Ensure percentages add to 100
+require(totalPercentage == 100, "Percentages must equal 100");
+
+// Prevent double distribution
+require(!payment.distributed, "Payment already distributed");
+
+// Require positive payment
+require(msg.value > 0, "Must send some CELO");
+```
+
+### Reentrancy Protection
+
+```solidity
+// Mark as distributed before transferring
+payment.distributed = true;
+
+// Transfer funds after state changes
+payable(payment.recipients[i]).transfer(share);
+```
+
+## 💰 Gas Optimization
+
+### Efficient Storage
+
+```solidity
+// Use uint256 for percentages (0-100)
+uint256[] memory percentages;
+
+// Pack boolean with other data
+bool distributed;
+```
+
+### Event Optimization
+
+```solidity
+// Index important fields for efficient filtering
+event PaymentCreated(uint256 indexed paymentId, string description, uint256 amount);
+event ContributionMade(uint256 indexed paymentId, address contributor, uint256 amount);
+```
+
+## 🧪 Testing the Contract
+
+### Unit Tests
+
+```python
+def test_create_payment(payment_splitter, accounts):
+    # Create a payment split
+    recipients = [accounts[1], accounts[2], accounts[3]]
+    percentages = [40, 35, 25]
+    
+    tx = payment_splitter.createPayment(
+        "Test Payment",
+        web3.to_wei(1, "ether"),
+        recipients,
+        percentages,
+        {"from": accounts[0]}
+    )
+    
+    # Verify payment was created
+    payment = payment_splitter.getPayment(0)
+    assert payment[0] == "Test Payment"  # description
+    assert payment[1] == web3.to_wei(1, "ether")  # totalAmount
+```
+
+## 📊 Contract Analysis
+
+### Storage Costs
+
+| Data Type | Size | Cost |
+|-----------|------|------|
+| `string` | Variable | 2x per byte |
+| `uint256` | 32 bytes | 20,000 gas |
+| `address` | 20 bytes | 20,000 gas |
+| `mapping` | 32 bytes | 20,000 gas |
+
+### Function Gas Costs
+
+| Function | Estimated Gas |
+|----------|---------------|
+| `createPayment` | ~150,000 |
+| `payInvoice` | ~50,000 |
+| `distribute` | ~100,000 + transfers |
+| `getPayment` | ~5,000 |
+| `getContribution` | ~3,000 |
+
+## 🔄 Contract Lifecycle
+
+1. **Deployment** - Contract deployed to blockchain
+2. **Payment Creation** - Someone creates a payment split
+3. **Contributions** - People pay their shares
+4. **Distribution** - Funds automatically distributed
+5. **Verification** - Contract verified on CeloScan
+
+## 📚 Next Steps
+
+Now that you understand the smart contract, you're ready to:
+
+1. **Deploy the Contract** - Get it on Celo testnet
+2. **Test the Functions** - Make sure everything works
+3. **Build the Web App** - Create user interface
+4. **Verify the Contract** - Make it public on CeloScan
+
+Ready to deploy? Let's move to the [Deployment](deployment.qmd) chapter!

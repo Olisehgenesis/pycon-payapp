@@ -1,0 +1,43 @@
+project:
+  title: "Payment Splitter DApp Tutorial"
+  type: book
+
+book:
+  title: "Payment Splitter DApp Tutorial"
+  author: "PyCon Uganda Team"
+  date: today
+  chapters:
+    - index.qmd
+    - intro.qmd
+    - setup.qmd
+    - smart-contract.qmd
+    - deployment.qmd
+    - web-app.qmd
+    - verification.qmd
+    - use-cases.qmd
+    - troubleshooting.qmd
+    - references.qmd
+
+format:
+  html:
+    theme: cosmo
+    toc: true
+    number-sections: true
+    code-fold: true
+    code-tools: true
+    css: styles.css
+    js: scripts.js
+  pdf:
+    toc: true
+    number-sections: true
+
+execute:
+  echo: true
+  eval: false
+  warning: false
+  error: false
+
+filters:
+  - include-code-files
+
+bibliography: references.bib

@@ -1,0 +1,311 @@
+# Deployment: Getting Your Contract on Celo
+
+## 🚀 What is Deployment?
+
+**Deployment** is the process of uploading your smart contract to the blockchain. Once deployed, your contract becomes a permanent part of the Celo network and can be used by anyone.
+
+### Deployment Process
+
+1. **Compile** - Convert Solidity to bytecode
+2. **Sign** - Create transaction with your private key
+3. **Broadcast** - Send to Celo network
+4. **Confirm** - Wait for blockchain confirmation
+5. **Verify** - Make contract source code public
+
+## 🛠️ Pre-Deployment Checklist
+
+Before deploying, ensure you have:
+
+- ✅ **Python 3.10** installed and active
+- ✅ **Brownie** installed and configured
+- ✅ **Celo network** added to Brownie
+- ✅ **Test CELO** in your account
+- ✅ **Private key** saved in `.env` file
+- ✅ **Contract code** ready in `contracts/PaymentSplitter.sol`
+
+## 🔐 Account Setup
+
+### 1. Generate Account (if not done)
+
+```bash
+# Run account creation script
+python scripts/create_account.py
+```
+
+This will:
+- Generate a new Ethereum account
+- Display your address
+- Save private key to `.env`
+- Provide faucet instructions
+
+### 2. Get Test CELO
+
+1. Visit [Celo Faucet](https://faucet.celo.org/)
+2. Enter your address
+3. Select "Alfajores" network
+4. Request test CELO (you'll get ~5 CELO)
+
+### 3. Verify Balance
+
+```bash
+# Check your account balance
+brownie run scripts/deploy --network alfajores
+```
+
+You should see something like:
+```
+Account: 0x1234...
+Balance: 5.0 CELO
+```
+
+## 📦 Deploy the Contract
+
+### Method 1: Using Brownie Script
+
+```bash
+# Deploy to Celo Alfajores testnet
+brownie run deploy --network alfajores
+```
+
+### Method 2: Manual Deployment
+
+```bash
+# Start Brownie console
+brownie console --network alfajores
+
+# Deploy contract
+payment_splitter = PaymentSplitter.deploy({"from": accounts[0]})
+
+# Get contract address
+print(f"Contract deployed at: {payment_splitter.address}")
+
+# Exit console
+exit()
+```
+
+## 📋 Deployment Script Explained
+
+Let's look at our deployment script:
+
+```python
+from brownie import PaymentSplitter, network, accounts
+from dotenv import load_dotenv
+import os
+
+def main():
+    # Load environment variables
+    load_dotenv()
+    
+    # Get account from private key
+    private_key = os.getenv("PRIVATE_KEY")
+    account = accounts.add(private_key)
+    
+    # Check account balance
+    balance = account.balance()
+    print(f"Account: {account.address}")
+    print(f"Balance: {balance / 10**18:.1f} CELO")
+    
+    if balance < 0.1 * 10**18:  # Less than 0.1 CELO
+        print("⚠️  Insufficient balance for deployment")
+        print("Get test CELO from: https://faucet.celo.org/")
+        return
+    
+    # Deploy contract
+    print("🚀 Deploying PaymentSplitter contract...")
+    payment_splitter = PaymentSplitter.deploy({"from": account})
+    
+    print(f"✅ Contract deployed successfully!")
+    print(f"Contract Address: {payment_splitter.address}")
+    print(f"Transaction Hash: {payment_splitter.tx.txid}")
+    
+    # Save contract address to .env
+    with open(".env", "a") as f:
+        f.write(f"\nCONTRACT_ADDRESS={payment_splitter.address}")
+    
+    print(f"💾 Contract address saved to .env")
+    
+    # Manual verification instructions
+    if network.show_active() != "development":
+        print(f"\n🔍 CONTRACT VERIFICATION")
+        print(f"To verify your contract on CeloScan:")
+        print(f"1. Visit: https://alfajores.celoscan.io/address/{payment_splitter.address}")
+        print(f"2. Click 'Contract' tab")
+        print(f"3. Click 'Verify and Publish'")
+        print(f"4. Select 'Solidity (Single file)'")
+        print(f"5. Enter compiler version: 0.8.19")
+        print(f"6. Upload the content of contracts/PaymentSplitter.sol")
+        print(f"7. Click 'Verify and Publish'")
+```
+
+## 🔍 Understanding Deployment Output
+
+When you run the deployment, you'll see:
+
+```
+Account: 0x1234567890abcdef...
+Balance: 5.0 CELO
+🚀 Deploying PaymentSplitter contract...
+✅ Contract deployed successfully!
+Contract Address: 0xabcdef1234567890...
+Transaction Hash: 0x9876543210fedcba...
+💾 Contract address saved to .env
+
+🔍 CONTRACT VERIFICATION
+To verify your contract on CeloScan:
+1. Visit: https://alfajores.celoscan.io/address/0xabcdef1234567890...
+...
+```
+
+### What Each Part Means
+
+- **Account**: Your wallet address
+- **Balance**: Available CELO for gas fees
+- **Contract Address**: Where your contract lives on blockchain
+- **Transaction Hash**: Proof of deployment transaction
+
+## 💰 Gas Costs
+
+### Deployment Costs
+
+| Network | Gas Used | Gas Price | Total Cost |
+|---------|----------|-----------|------------|
+| Celo Alfajores | ~1,200,000 | 0.1 gwei | ~0.12 CELO |
+
+### Transaction Costs
+
+| Function | Gas Used | Cost (CELO) |
+|----------|----------|-------------|
+| `createPayment` | ~150,000 | ~0.015 |
+| `payInvoice` | ~50,000 | ~0.005 |
+| `distribute` | ~100,000 | ~0.01 |
+
+## 🔧 Troubleshooting Deployment
+
+### Common Issues
+
+**1. Insufficient Balance**
+```
+⚠️  Insufficient balance for deployment
+Get test CELO from: https://faucet.celo.org/
+```
+
+**Solution**: Get more test CELO from the faucet
+
+**2. Network Connection Error**
+```
+ConnectionError: Could not connect to https://alfajores-forno.celo-testnet.org
+```
+
+**Solution**: Check internet connection and try again
+
+**3. Compilation Error**
+```
+CompilationError: contracts/PaymentSplitter.sol:XX:XX
+```
+
+**Solution**: Check your Solidity code for syntax errors
+
+**4. Private Key Error**
+```
+KeyError: 'PRIVATE_KEY'
+```
+
+**Solution**: Make sure your `.env` file contains:
+```
+PRIVATE_KEY=your_private_key_here
+```
+
+## 📊 Post-Deployment Steps
+
+### 1. Save Contract Address
+
+The deployment script automatically saves your contract address to `.env`:
+
+```bash
+# Check your .env file
+cat .env
+```
+
+You should see:
+```
+PRIVATE_KEY=your_private_key_here
+CONTRACT_ADDRESS=0xabcdef1234567890...
+```
+
+### 2. Test the Contract
+
+```bash
+# Test contract functions
+brownie run scripts/create_payment --network alfajores
+brownie run scripts/pay_invoice --network alfajores
+```
+
+### 3. Verify on CeloScan
+
+1. Visit your contract on CeloScan
+2. Click "Contract" tab
+3. Click "Verify and Publish"
+4. Follow the verification process
+
+## 🔗 Contract Verification
+
+### Why Verify?
+
+- **Transparency** - Anyone can see your code
+- **Trust** - Users know what your contract does
+- **Debugging** - Easier to troubleshoot issues
+- **Professional** - Shows you're a serious developer
+
+### Verification Process
+
+1. **Visit CeloScan**: Go to your contract address
+2. **Click "Contract"**: Navigate to contract tab
+3. **Click "Verify"**: Start verification process
+4. **Select Compiler**: Choose Solidity 0.8.19
+5. **Upload Code**: Paste your contract source
+6. **Submit**: Wait for verification
+
+## 📱 Contract Interaction
+
+### Using Brownie Console
+
+```bash
+# Start console
+brownie console --network alfajores
+
+# Load deployed contract
+payment_splitter = PaymentSplitter.at("0xyour_contract_address")
+
+# Create a payment
+payment_splitter.createPayment(
+    "Cafe Javas Dinner",
+    web3.to_wei(0.1, "ether"),
+    ["0xrecipient1", "0xrecipient2"],
+    [60, 40],
+    {"from": accounts[0]}
+)
+
+# Exit console
+exit()
+```
+
+### Using Python Scripts
+
+```bash
+# Create payment
+brownie run scripts/create_payment --network alfajores
+
+# Pay invoice
+brownie run scripts/pay_invoice --network alfajores
+```
+
+## 🎯 Next Steps
+
+Now that your contract is deployed, you can:
+
+1. **Test Functions** - Try creating payments and paying invoices
+2. **Build Web App** - Create user interface for your contract
+3. **Add Features** - Extend functionality as needed
+4. **Deploy to Mainnet** - When ready for production
+
+Ready to build the web application? Let's move to the [Web Application](web-app.qmd) chapter!

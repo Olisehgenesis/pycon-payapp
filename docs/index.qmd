@@ -1,0 +1,108 @@
+---
+title: "Payment Splitter DApp Tutorial"
+subtitle: "Building Real-World Blockchain Applications for Ugandan Developers"
+---
+
+# Welcome to the Payment Splitter DApp Tutorial! 🇺🇬
+
+## What You'll Learn
+
+This comprehensive tutorial teaches you how to build a **Payment Splitter DApp** - a practical blockchain application perfect for Ugandan developers and businesses. You'll learn:
+
+- **Smart Contract Development** with Solidity
+- **Blockchain Deployment** on Celo Alfajores testnet
+- **Web3 Integration** with Python and Web3.py
+- **Modern Web Development** with Flask and Bootstrap
+- **Real-World Use Cases** for the Ugandan context
+
+## 🎯 Project Overview
+
+The Payment Splitter DApp solves real problems that Ugandans face daily:
+
+- **Split bills** at restaurants like Cafe Javas
+- **Divide rent** among roommates
+- **Share boda boda** rides with friends
+- **Manage office** lunch orders
+- **Handle group** shopping expenses
+
+## 🚀 Key Features
+
+| Feature | Description |
+|---------|-------------|
+| **Percentage-based Splitting** | Flexible for any group size |
+| **Automatic Distribution** | Funds distributed when target reached |
+| **Transparent Tracking** | See who paid what |
+| **No Manual Calculations** | Smart contract handles math |
+| **Immutable Records** | Blockchain proof of payments |
+
+## 📚 Tutorial Structure
+
+1. **[Introduction](intro.qmd)** - Understanding the problem and solution
+2. **[Setup](setup.qmd)** - Environment preparation and tools
+3. **[Smart Contract](smart-contract.qmd)** - Building the core logic
+4. **[Deployment](deployment.qmd)** - Deploying to Celo testnet
+5. **[Web Application](web-app.qmd)** - Creating the user interface
+6. **[Contract Verification](verification.qmd)** - Making your contract public
+7. **[Use Cases](use-cases.qmd)** - Real-world applications
+8. **[Troubleshooting](troubleshooting.qmd)** - Common issues and solutions
+
+## 🛠️ Technology Stack
+
+- **Blockchain**: Celo Alfajores Testnet
+- **Smart Contracts**: Solidity 0.8.19
+- **Development Framework**: Brownie
+- **Web Framework**: Flask
+- **Frontend**: HTML5, CSS3, Bootstrap 5, JavaScript
+- **Blockchain Interaction**: Web3.py
+
+## ⏱️ Time Commitment
+
+- **Total Time**: 2-3 hours
+- **Setup**: 30 minutes
+- **Smart Contract**: 45 minutes
+- **Deployment**: 30 minutes
+- **Web App**: 45 minutes
+- **Testing & Verification**: 30 minutes
+
+## 🎓 Prerequisites
+
+- Basic Python knowledge
+- Familiarity with web development (HTML/CSS)
+- No blockchain experience required!
+
+## 🎁 What You'll Build
+
+By the end of this tutorial, you'll have:
+
+1. **A deployed smart contract** on Celo testnet
+2. **A web application** with modern UI
+3. **Real payment splitting functionality**
+4. **Verification on CeloScan**
+5. **Complete project documentation**
+
+## 🚀 Quick Start
+
+```bash
+# Clone the project
+git clone <your-repo-url>
+cd pycon-app-contracts
+
+# Setup environment
+chmod +x setup.sh
+./setup.sh
+
+# Create account and get test CELO
+python scripts/create_account.py
+# Visit: https://faucet.celo.org/
+
+# Deploy contract
+brownie run deploy --network alfajores
+```
+
+## 📖 Next Steps
+
+Ready to start? Head over to the [Introduction](intro.qmd) to understand the problem we're solving and why this DApp is perfect for Ugandan developers!
+
+---
+
+**Built with ❤️ for the Ugandan Web3 community! 🇺🇬**
