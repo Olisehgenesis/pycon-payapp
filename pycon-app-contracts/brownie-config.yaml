@@ -1,0 +1,20 @@
+dependencies:
+  - OpenZeppelin/openzeppelin-contracts@4.8.0
+
+compiler:
+  solc:
+    version: 0.8.19
+    settings:
+      optimizer:
+        enabled: true
+        runs: 200
+
+networks:
+  alfajores:
+    host: https://alfajores-forno.celo-testnet.org
+    chainid: 44787
+    explorer: https://alfajores.celoscan.io
+    verify_source_code: true
+    api_key: ${CELOSCAN_TOKEN}
+
+dotenv: .env

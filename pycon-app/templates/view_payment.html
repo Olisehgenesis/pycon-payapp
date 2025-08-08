@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+
+{% block title %}Payment Details - Payment Splitter DApp{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <!-- Payment Header -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h3 class="card-title mb-2">
+                            <i class="fas fa-receipt text-primary me-2"></i>
+                            {{ payment.description }}
+                        </h3>
+                        <p class="text-muted mb-0">Payment ID: {{ payment.id }}</p>
+                    </div>
+                    <div class="col-md-4 text-md-end">
+                        <span class="badge {{ 'bg-success' if payment.is_active else 'bg-secondary' }} fs-6">
+                            <i class="fas fa-{{ 'check-circle' if payment.is_active else 'check' }} me-1"></i>
+                            {{ 'Active' if payment.is_active else 'Completed' }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Payment Stats -->
+        <div class="row mb-4">
+            <div class="col-md-3 mb-3">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body text-center">
+                        <div class="stats-icon bg-primary bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3">
+                            <i class="fas fa-coins text-primary fa-2x"></i>
+                        </div>
+                        <h4 class="card-title fw-bold text-primary">{{ "%.4f"|format(payment.total_amount) }}</h4>
+                        <p class="card-text text-muted">Total Amount (CELO)</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body text-center">
+                        <div class="stats-icon bg-success bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3">
+                            <i class="fas fa-hand-holding-usd text-success fa-2x"></i>
+                        </div>
+                        <h4 class="card-title fw-bold text-success">{{ "%.4f"|format(payment.collected_amount) }}</h4>
+                        <p class="card-text text-muted">Collected (CELO)</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body text-center">
+                        <div class="stats-icon bg-info bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3">
+                            <i class="fas fa-percentage text-info fa-2x"></i>
+                        </div>
+                        <h4 class="card-title fw-bold text-info">{{ "%.1f"|format(payment.progress) }}%</h4>
+                        <p class="card-text text-muted">Progress</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body text-center">
+                        <div class="stats-icon bg-warning bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3">
+                            <i class="fas fa-users text-warning fa-2x"></i>
+                        </div>
+                        <h4 class="card-title fw-bold text-warning">{{ payment.recipients|length }}</h4>
+                        <p class="card-text text-muted">Recipients</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Progress Bar -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body">
+                <h5 class="card-title mb-3">
+                    <i class="fas fa-chart-line text-primary me-2"></i>
+                    Payment Progress
+                </h5>
+                <div class="mb-2">
+                    <div class="d-flex justify-content-between mb-1">
+                        <small class="text-muted">Progress</small>
+                        <small class="text-muted">{{ "%.1f"|format(payment.progress) }}%</small>
+                    </div>
+                    <div class="progress" style="height: 12px;">
+                        <div class="progress-bar" role="progressbar" style="width: {{ payment.progress }}%"></div>
+                    </div>
+                </div>
+                <div class="row text-center">
+                    <div class="col-md-6">
+                        <small class="text-muted d-block">Total Amount</small>
+                        <strong class="amount-display">{{ "%.4f"|format(payment.total_amount) }} CELO</strong>
+                    </div>
+                    <div class="col-md-6">
+                        <small class="text-muted d-block">Collected</small>
+                        <strong class="amount-display">{{ "%.4f"|format(payment.collected_amount) }} CELO</strong>
+                    </div>
+                </div>
+                {% if payment.is_active %}
+                <div class="mt-3">
+                    <small class="text-muted">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Remaining: {{ "%.4f"|format(payment.total_amount - payment.collected_amount) }} CELO
+                    </small>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Recipients -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white border-0">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-users text-primary me-2"></i>
+                    Recipients
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% for i in range(payment.recipients|length) %}
+                    <div class="col-md-6 mb-3">
+                        <div class="recipient-item">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="mb-1">Recipient {{ i + 1 }}</h6>
+                                    <p class="text-muted small mb-1">{{ payment.recipients[i] }}</p>
+                                    <span class="badge bg-primary">{{ payment.percentages[i] }}%</span>
+                                </div>
+                                <div class="text-end">
+                                    <strong class="amount-display">{{ "%.4f"|format(payment.total_amount * payment.percentages[i] / 100) }} CELO</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Payment Actions -->
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body text-center">
+                        <h6 class="card-title mb-3">
+                            <i class="fas fa-info-circle text-info me-2"></i>
+                            Payment Details
+                        </h6>
+                        <div class="text-start">
+                            <p class="mb-2"><strong>Creator:</strong> <code>{{ payment.creator[:10] }}...</code></p>
+                            <p class="mb-2"><strong>Status:</strong> 
+                                <span class="badge {{ 'bg-success' if payment.is_active else 'bg-secondary' }}">
+                                    {{ 'Active' if payment.is_active else 'Completed' }}
+                                </span>
+                            </p>
+                            <p class="mb-0"><strong>Created:</strong> Payment ID {{ payment.id }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 mb-3">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body text-center">
+                        <h6 class="card-title mb-3">
+                            <i class="fas fa-cog text-primary me-2"></i>
+                            Actions
+                        </h6>
+                        <div class="d-grid gap-2">
+                            {% if payment.is_active %}
+                            <a href="{{ url_for('pay_invoice') }}?payment_id={{ payment.id }}" class="btn btn-primary">
+                                <i class="fas fa-credit-card me-2"></i>Pay Invoice
+                            </a>
+                            {% else %}
+                            <button class="btn btn-success" disabled>
+                                <i class="fas fa-check-circle me-2"></i>Payment Completed
+                            </button>
+                            {% endif %}
+                            <button class="btn btn-outline-secondary" onclick="copyToClipboard('{{ payment.id }}')">
+                                <i class="fas fa-copy me-2"></i>Copy Payment ID
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Back Button -->
+        <div class="text-center">
+            <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-2"></i>
+                Back to Dashboard
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Copy payment ID to clipboard
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(() => {
+        showSuccess('Payment ID copied to clipboard!');
+    }).catch(() => {
+        showError('Failed to copy to clipboard');
+    });
+}
+
+// Auto-refresh payment data every 30 seconds
+setInterval(function() {
+    // You could add AJAX call here to refresh payment data
+    console.log('Payment data refreshed');
+}, 30000);
+</script>
+{% endblock %}
+

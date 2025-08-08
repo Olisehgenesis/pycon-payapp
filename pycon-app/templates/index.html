@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+
+{% block title %}Home - Payment Splitter DApp{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<div class="hero-section text-center py-5 mb-5">
+    <div class="container">
+        <h1 class="display-4 fw-bold text-primary mb-3">
+            <i class="fas fa-share-alt me-3"></i>
+            Payment Splitter DApp
+        </h1>
+        <p class="lead text-muted mb-4">
+            Split bills, rent, and group expenses on the Celo blockchain
+        </p>
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="d-flex gap-3 justify-content-center flex-wrap">
+                    <a href="{{ url_for('create_payment') }}" class="btn btn-primary btn-lg">
+                        <i class="fas fa-plus me-2"></i>Create Payment
+                    </a>
+                    <a href="{{ url_for('pay_invoice') }}" class="btn btn-outline-primary btn-lg">
+                        <i class="fas fa-credit-card me-2"></i>Pay Invoice
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Stats Cards -->
+<div class="row mb-5">
+    <div class="col-md-4 mb-3">
+        <div class="card h-100 border-0 shadow-sm">
+            <div class="card-body text-center">
+                <div class="stats-icon bg-primary bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3">
+                    <i class="fas fa-receipt text-primary fa-2x"></i>
+                </div>
+                <h3 class="card-title fw-bold text-primary">{{ total_payments }}</h3>
+                <p class="card-text text-muted">Total Payments Created</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-3">
+        <div class="card h-100 border-0 shadow-sm">
+            <div class="card-body text-center">
+                <div class="stats-icon bg-success bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3">
+                    <i class="fas fa-check-circle text-success fa-2x"></i>
+                </div>
+                <h3 class="card-title fw-bold text-success" id="active-payments">-</h3>
+                <p class="card-text text-muted">Active Payments</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-3">
+        <div class="card h-100 border-0 shadow-sm">
+            <div class="card-body text-center">
+                <div class="stats-icon bg-info bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3">
+                    <i class="fas fa-coins text-info fa-2x"></i>
+                </div>
+                <h3 class="card-title fw-bold text-info" id="total-celo">-</h3>
+                <p class="card-text text-muted">Total CELO Managed</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Payments -->
+<div class="row">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-0">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-clock me-2 text-primary"></i>
+                    Recent Payments
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="payments-list" class="row">
+                    <div class="col-12 text-center py-4">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="text-muted mt-2">Loading payments...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Features Section -->
+<div class="row mt-5">
+    <div class="col-12">
+        <h3 class="text-center mb-4">Why Use Payment Splitter?</h3>
+    </div>
+    <div class="col-md-4 mb-4">
+        <div class="text-center">
+            <div class="feature-icon bg-primary bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3">
+                <i class="fas fa-shield-alt text-primary fa-2x"></i>
+            </div>
+            <h5>Secure & Transparent</h5>
+            <p class="text-muted">All transactions are recorded on the blockchain with full transparency</p>
+        </div>
+    </div>
+    <div class="col-md-4 mb-4">
+        <div class="text-center">
+            <div class="feature-icon bg-success bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3">
+                <i class="fas fa-bolt text-success fa-2x"></i>
+            </div>
+            <h5>Automatic Distribution</h5>
+            <p class="text-muted">Payments are automatically distributed when the target is reached</p>
+        </div>
+    </div>
+    <div class="col-md-4 mb-4">
+        <div class="text-center">
+            <div class="feature-icon bg-info bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3">
+                <i class="fas fa-globe text-info fa-2x"></i>
+            </div>
+            <h5>Global & Borderless</h5>
+            <p class="text-muted">Works anywhere in the world with Celo's mobile-first blockchain</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Load payments data
+document.addEventListener('DOMContentLoaded', function() {
+    fetch('/api/payments')
+        .then(response => response.json())
+        .then(data => {
+            updatePaymentsList(data);
+            updateStats(data);
+        })
+        .catch(error => {
+            console.error('Error loading payments:', error);
+            document.getElementById('payments-list').innerHTML = `
+                <div class="col-12 text-center py-4">
+                    <i class="fas fa-exclamation-triangle text-warning fa-2x mb-2"></i>
+                    <p class="text-muted">Error loading payments</p>
+                </div>
+            `;
+        });
+});
+
+function updatePaymentsList(payments) {
+    const container = document.getElementById('payments-list');
+    
+    if (payments.length === 0) {
+        container.innerHTML = `
+            <div class="col-12 text-center py-4">
+                <i class="fas fa-inbox text-muted fa-2x mb-2"></i>
+                <p class="text-muted">No payments created yet</p>
+                <a href="{{ url_for('create_payment') }}" class="btn btn-primary">
+                    <i class="fas fa-plus me-2"></i>Create First Payment
+                </a>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = payments.map(payment => `
+        <div class="col-md-6 col-lg-4 mb-3">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h6 class="card-title mb-0">${payment.description}</h6>
+                        <span class="badge ${payment.is_active ? 'bg-success' : 'bg-secondary'}">
+                            ${payment.is_active ? 'Active' : 'Completed'}
+                        </span>
+                    </div>
+                    <p class="text-muted small mb-2">ID: ${payment.id}</p>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <small class="text-muted">Progress</small>
+                            <small class="text-muted">${payment.progress.toFixed(1)}%</small>
+                        </div>
+                        <div class="progress" style="height: 6px;">
+                            <div class="progress-bar" role="progressbar" style="width: ${payment.progress}%"></div>
+                        </div>
+                    </div>
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <small class="text-muted d-block">Total</small>
+                            <strong>${payment.total_amount.toFixed(4)} CELO</strong>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted d-block">Collected</small>
+                            <strong>${payment.collected_amount.toFixed(4)} CELO</strong>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <a href="/view_payment/${payment.id}" class="btn btn-outline-primary btn-sm w-100">
+                            <i class="fas fa-eye me-1"></i>View Details
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function updateStats(payments) {
+    const activePayments = payments.filter(p => p.is_active).length;
+    const totalCelo = payments.reduce((sum, p) => sum + p.total_amount, 0);
+    
+    document.getElementById('active-payments').textContent = activePayments;
+    document.getElementById('total-celo').textContent = totalCelo.toFixed(2);
+}
+</script>
+{% endblock %}

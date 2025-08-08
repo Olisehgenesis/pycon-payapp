@@ -1,0 +1,234 @@
+{% extends "base.html" %}
+
+{% block title %}Create Payment - Payment Splitter DApp{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-0">
+                <h4 class="card-title mb-0">
+                    <i class="fas fa-plus-circle text-primary me-2"></i>
+                    Create New Payment Split
+                </h4>
+                <p class="text-muted mb-0 mt-2">Set up a payment split with multiple recipients</p>
+            </div>
+            <div class="card-body">
+                <form id="create-payment-form" method="POST" class="needs-validation" novalidate>
+                    <!-- Payment Details -->
+                    <div class="mb-4">
+                        <h5 class="text-primary mb-3">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Payment Details
+                        </h5>
+                        
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Description</label>
+                            <input type="text" class="form-control" id="description" name="description" 
+                                   placeholder="e.g., Dinner at Cafe Javas" required>
+                            <div class="invalid-feedback">
+                                Please provide a description for the payment
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="total_amount" class="form-label">Total Amount (CELO)</label>
+                            <div class="input-group">
+                                <input type="number" class="form-control" id="total_amount" name="total_amount" 
+                                       step="0.0001" min="0.0001" placeholder="0.1" required>
+                                <span class="input-group-text">CELO</span>
+                            </div>
+                            <div class="invalid-feedback">
+                                Please enter a valid amount greater than 0
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Recipients Section -->
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="text-primary mb-0">
+                                <i class="fas fa-users me-2"></i>
+                                Recipients
+                            </h5>
+                            <button type="button" class="btn btn-outline-primary btn-sm" id="add-recipient-btn">
+                                <i class="fas fa-plus me-1"></i>Add Recipient
+                            </button>
+                        </div>
+                        
+                        <div id="recipients-container">
+                            <!-- Recipients will be added here dynamically -->
+                        </div>
+                        
+                        <div class="alert alert-info">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span>
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    Total Percentage: <span id="total-percentage" class="fw-bold">0</span>%
+                                </span>
+                                <span class="badge bg-success" id="percentage-status" style="display: none;">
+                                    <i class="fas fa-check me-1"></i>Valid
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Submit Button -->
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="fas fa-paper-plane me-2"></i>
+                            Create Payment Split
+                        </button>
+                        <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>
+                            Back to Dashboard
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Help Section -->
+        <div class="card border-0 shadow-sm mt-4">
+            <div class="card-header bg-white border-0">
+                <h6 class="card-title mb-0">
+                    <i class="fas fa-question-circle text-info me-2"></i>
+                    How it works
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4 text-center mb-3">
+                        <div class="feature-icon bg-primary bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-2">
+                            <i class="fas fa-edit text-primary"></i>
+                        </div>
+                        <h6>1. Create Payment</h6>
+                        <p class="text-muted small">Set up the payment split with recipients and percentages</p>
+                    </div>
+                    <div class="col-md-4 text-center mb-3">
+                        <div class="feature-icon bg-success bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-2">
+                            <i class="fas fa-share text-success"></i>
+                        </div>
+                        <h6>2. Share Payment ID</h6>
+                        <p class="text-muted small">Share the payment ID with contributors</p>
+                    </div>
+                    <div class="col-md-4 text-center mb-3">
+                        <div class="feature-icon bg-info bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-2">
+                            <i class="fas fa-check-circle text-info"></i>
+                        </div>
+                        <h6>3. Automatic Distribution</h6>
+                        <p class="text-muted small">Funds are automatically distributed when target is reached</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Initialize the form when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    // Add first recipient by default
+    addRecipient();
+    
+    // Add event listener for add recipient button
+    const addButton = document.getElementById('add-recipient-btn');
+    if (addButton) {
+        addButton.addEventListener('click', addRecipient);
+    }
+    
+    // Form validation
+    const form = document.querySelector('.needs-validation');
+    form.addEventListener('submit', function(event) {
+        if (!form.checkValidity()) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        
+        // Check if percentages add up to 100
+        const total = calculateTotalPercentage();
+        if (total !== 100) {
+            event.preventDefault();
+            showError('Percentages must add up to 100%');
+            return;
+        }
+        
+        form.classList.add('was-validated');
+    });
+    
+    // Real-time percentage calculation
+    document.addEventListener('input', function(e) {
+        if (e.target.classList.contains('percentage-input')) {
+            const total = calculateTotalPercentage();
+            const status = document.getElementById('percentage-status');
+            
+            if (total === 100) {
+                status.style.display = 'inline-block';
+                status.className = 'badge bg-success';
+                status.innerHTML = '<i class="fas fa-check me-1"></i>Valid';
+            } else if (total > 100) {
+                status.style.display = 'inline-block';
+                status.className = 'badge bg-danger';
+                status.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>Too High';
+            } else {
+                status.style.display = 'none';
+            }
+        }
+    });
+});
+
+// Enhanced addRecipient function for this page
+function addRecipient() {
+    const recipientsContainer = document.getElementById('recipients-container');
+    const recipientTemplate = `
+        <div class="recipient-item mb-3" id="recipient-${currentRecipientCount}">
+            <div class="row">
+                <div class="col-md-6 mb-2">
+                    <label class="form-label">Recipient Address</label>
+                    <input type="text" class="form-control" name="recipients[]" 
+                           placeholder="0x..." required 
+                           pattern="^0x[a-fA-F0-9]{40}$">
+                    <div class="invalid-feedback">
+                        Please enter a valid Ethereum address
+                    </div>
+                </div>
+                <div class="col-md-4 mb-2">
+                    <label class="form-label">Percentage</label>
+                    <div class="input-group">
+                        <input type="number" class="form-control percentage-input" 
+                               name="percentages[]" min="1" max="100" required>
+                        <span class="input-group-text">%</span>
+                    </div>
+                    <div class="invalid-feedback">
+                        Please enter a percentage between 1-100
+                    </div>
+                </div>
+                <div class="col-md-2 mb-2 d-flex align-items-end">
+                    <button type="button" class="btn btn-outline-danger btn-sm" 
+                            onclick="removeRecipient(${currentRecipientCount})">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    recipientsContainer.insertAdjacentHTML('beforeend', recipientTemplate);
+    currentRecipientCount++;
+    
+    // Add slide-in animation
+    const newRecipient = document.getElementById(`recipient-${currentRecipientCount - 1}`);
+    newRecipient.style.opacity = '0';
+    newRecipient.style.transform = 'translateX(-100%)';
+    
+    setTimeout(() => {
+        newRecipient.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';
+        newRecipient.style.opacity = '1';
+        newRecipient.style.transform = 'translateX(0)';
+    }, 10);
+}
+</script>
+{% endblock %}
+
